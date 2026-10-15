@@ -1,0 +1,56 @@
+elif d == "m_p": await c.message.answer("💎 Premium:", reply_markup=menu(PREM, "buy_p", uid))
+    elif d == "m_r": await c.message.answer("⚡ Robux:", reply_markup=menu(ROB, "buy_r", uid, True))
+    elif d == "m_vip": await show_vip_info(c, uid)
+    elif d == "m_fl": await pay_menu(c, c.from_user)
+    elif d == "m_pr": await prof(c, c.from_user)
+    await c.answer()
+
+@dp.callback_query(F.data == "back")
+async def cb_back(c: CallbackQuery, state: FSMContext):
+    await state.clear(); await c.message.delete()
+    lang = g_u(c.from_user.id).get("lang", "uz")
+    await c.message.answer("👇 Menyu / Меню:", reply_markup=get_kb(lang))
+
+@dp.callback_query(F.data.startswith("buy_"))
+async def cb_buy(c: CallbackQuery, state: FSMContext):
+    p = c.data.split("_"); act, val, price = p[1], p[2], int(p[3])
+    if act == "s": txt, iname, cat = f"⭐ {val} yulduz. Username yuboring:", f"⭐ {val} yulduz", "stars"
+    elif act == "p": txt, iname, cat = f"💎 Premium uchun telefon raqamingizni yuboring:", f"💎 Premium ({val})", "prem"
+    else: txt, iname, cat = f"⚡ {val} Robux. Nik va parol yuboring:", f"⚡ {val} Robux", "robux"
+    await state.update_data(iname=iname, price=price, cat=cat, key=val)
+    await state.set_state(FSM.item); await c.message.edit_text(txt)
+
+@dp.callback_query(F.data.startswith("ord_"))
+async def cb_ord(c: CallbackQuery):
+    if c.from_user.id in (AID, *a_auth):
+        uid = int(c.data.split("_")[1]); iname = ord_map.get(uid, "Mahsulot")
+        try:
+            await bot.send_message(uid, f"🎉 {iname} bajarildi!")
+            await c.message.edit_text(f"✅ Bajarildi!\n\n{c.message.text}"); await c.answer("✅ Ok")
+        except: pass
+
+@dp.message(Command("send"))
+async def c_send(m: Message):
+    if m.from_user.id not in (AID, *a_auth): return
+    n = [x for x in m.text.split() if x.isdigit()]
+    if len(n) < 2: return await m.answer("❌ /send ID SUMMA")
+    nb = add_b(int(n[0]), int(n[1]))
+    try: await bot.send_message(int(n[0]), f"✅ Balansga +{f_n(int(n[1]))} so'm qo'shildi!")
+    except: pass
+    await m.answer(f"✅ Bajarildi! Balans: {f_n(nb)}")
+
+@dp.message(Command("stat"))
+async def c_stat(m: Message):
+    if m.from_user.id not in (AID, *a_auth): return
+    db = ldb(); u = list(db.keys())
+    tb = sum(db[k].get("balance", 0) for k in u if isinstance(db[k], dict))
+    vip_count = sum(1 for k in u if isinstance(db[k], dict) and db[k].get("vip"))
+    await m.answer(f"📊 <b>Statistika:</b>\n👤 Userlar: {len(u)} ta\n👑 VIPlar: {vip_count} ta\n💰 Jami balans: {f_n(tb)} so'm", parse_mode="HTML")
+
+async def main():
+    print("🔥 Bot ishga tushdi...")
+    await bot.delete_webhook(drop_pending_updates=True)
+    await dp.start_polling(bot)
+
+if name == "main":
+    asyncio.run(main())
